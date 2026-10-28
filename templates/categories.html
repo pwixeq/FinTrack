@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+
+{% block title %}Категории | FinTrack{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <h2>Категории</h2>
+    <p class="text-secondary">Управление доходами и расходами</p>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h3 class="card-title">Добавить категорию</h3>
+    </div>
+
+    <div class="card-body">
+        <form id="category-form">
+            {% csrf_token %}
+
+            <div class="mb-3">
+                <label class="form-label" for="category-name">
+                    Название
+                </label>
+                <input
+                    class="form-control"
+                    type="text"
+                    id="category-name"
+                    name="name"
+                    maxlength="100"
+                    required
+                >
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="category-type">
+                    Тип категории
+                </label>
+                <select
+                    class="form-select"
+                    id="category-type"
+                    name="category_type"
+                    required
+                >
+                    <option value="expense">Расход</option>
+                    <option value="income">Доход</option>
+                </select>
+            </div>
+
+            <button class="btn btn-primary" type="submit">
+                Добавить категорию
+            </button>
+        </form>
+
+        <div id="category-message" class="mt-3"></div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Список категорий</h3>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-vcenter card-table">
+            <thead>
+                <tr>
+                    <th>Название</th>
+                    <th>Тип</th>
+                    <th>Действие</th>
+                </tr>
+            </thead>
+
+            <tbody id="categories-body">
+                {% for category in categories %}
+                <tr id="category-{{ category.id }}">
+                    <td>{{ category.name }}</td>
+                    <td>
+                        {% if category.category_type == 'income' %}
+                        <span class="badge bg-success">Доход</span>
+                        {% else %}
+                        <span class="badge bg-danger">Расход</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <button
+                            class="btn btn-sm btn-outline-danger delete-category"
+                            data-id="{{ category.id }}"
+                            type="button"
+                        >
+                            Удалить
+                        </button>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr id="empty-categories">
+                    <td colspan="3" class="text-center text-secondary py-4">
+                        Категорий пока нет
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const categoryForm = document.getElementById('category-form');
+const categoriesBody = document.getElementById('categories-body');
+const categoryMessage = document.getElementById('category-message');
+
+function showCategoryMessage(message, isError = false) {
+    categoryMessage.innerHTML = '';
+    const alert = document.createElement('div');
+    alert.className = isError
+        ? 'alert alert-danger'
+        : 'alert alert-success';
+    alert.textContent = message;
+    categoryMessage.appendChild(alert);
+}
+
+categoryForm.addEventListener('submit', async function(event) {
+    event.preventDefault();
+
+    const response = await fetch("{% url 'category_create' %}", {
+        method: 'POST',
+        body: new FormData(categoryForm),
+        headers: {
+            'X-CSRFToken': document.querySelector(
+                '[name=csrfmiddlewaretoken]'
+            ).value
+        }
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        showCategoryMessage(data.error || 'Не удалось добавить категорию.', true);
+        return;
+    }
+
+    const emptyRow = document.getElementById('empty-categories');
+    if (emptyRow) emptyRow.remove();
+
+    const row = document.createElement('tr');
+    row.id = `category-${data.id}`;
+
+    const nameCell = document.createElement('td');
+    nameCell.textContent = data.name;
+
+    const typeCell = document.createElement('td');
+    const badge = document.createElement('span');
+    badge.className = data.category_type === 'income'
+        ? 'badge bg-success'
+        : 'badge bg-danger';
+    badge.textContent = data.category_type === 'income'
+        ? 'Доход'
+        : 'Расход';
+    typeCell.appendChild(badge);
+
+    const actionCell = document.createElement('td');
+    const deleteButton = document.createElement('button');
+    deleteButton.className = 'btn btn-sm btn-outline-danger delete-category';
+    deleteButton.dataset.id = data.id;
+    deleteButton.type = 'button';
+    deleteButton.textContent = 'Удалить';
+    actionCell.appendChild(deleteButton);
+
+    row.append(nameCell, typeCell, actionCell);
+    categoriesBody.appendChild(row);
+
+    categoryForm.reset();
+    showCategoryMessage('Категория добавлена.');
+});
+
+categoriesBody.addEventListener('click', async function(event) {
+    const button = event.target.closest('.delete-category');
+    if (!button) return;
+
+    const id = button.dataset.id;
+
+    if (!confirm('Удалить эту категорию?')) return;
+
+    const response = await fetch(`/categories/${id}/delete/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector(
+                '[name=csrfmiddlewaretoken]'
+            ).value
+        }
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        showCategoryMessage(data.error || 'Не удалось удалить категорию.', true);
+        return;
+    }
+
+    document.getElementById(`category-${id}`).remove();
+    showCategoryMessage('Категория удалена.');
+});
+</script>
+{% endblock %}

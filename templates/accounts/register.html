@@ -1,0 +1,29 @@
+
+{% extends 'base.html' %}
+
+{% block title %}Регистрация | FinTrack{% endblock %}
+
+{% block content %}
+<div class="container container-tight py-4">
+    <div class="card card-md">
+        <div class="card-body">
+            <h2 class="h2 text-center mb-4">Создание аккаунта</h2>
+
+            <form method="post">
+                {% csrf_token %}
+
+                {{ form.as_p }}
+
+                <button type="submit" class="btn btn-primary w-100">
+                    Зарегистрироваться
+                </button>
+            </form>
+
+            <div class="text-center mt-3">
+                Уже есть аккаунт?
+                <a href="{% url 'login' %}">Войти</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

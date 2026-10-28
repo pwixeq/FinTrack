@@ -1,0 +1,13 @@
+from rest_framework.routers import DefaultRouter
+from .api_views import (
+    CategoryViewSet,
+    TransactionViewSet,
+    BudgetViewSet,
+)
+
+router = DefaultRouter()
+router.register('categories', CategoryViewSet, basename='category')
+router.register('transactions', TransactionViewSet, basename='transaction')
+router.register('budgets', BudgetViewSet, basename='budget')
+
+urlpatterns = router.urls

@@ -1,0 +1,169 @@
+```html
+{% extends 'base.html' %}
+
+{% block title %}Мой профиль | FinTrack{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <div>
+        <h2 class="page-title">Мой профиль</h2>
+        <div class="text-secondary mt-1">
+            Информация об аккаунте и финансовая статистика
+        </div>
+    </div>
+</div>
+
+<!-- Информация о пользователе -->
+<div class="row row-cards mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex align-items-center flex-wrap gap-3">
+
+                    <span class="avatar avatar-xl bg-primary-lt text-primary">
+                        {{ profile_user.username|first|upper }}
+                    </span>
+
+                    <div class="flex-fill">
+                        <h2 class="mb-1">
+                            {{ profile_user.username }}
+                        </h2>
+
+                        <div class="text-secondary">
+                            {% if profile_user.email %}
+                                {{ profile_user.email }}
+                            {% else %}
+                                Электронная почта не указана
+                            {% endif %}
+                        </div>
+
+                        <div class="text-secondary small mt-2">
+                            Дата регистрации:
+                            {{ profile_user.date_joined|date:"d.m.Y" }}
+                        </div>
+                    </div>
+
+                    <span class="badge bg-success-lt text-success">
+                        Аккаунт активен
+                    </span>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Финансовая статистика -->
+<div class="row row-cards mb-4">
+
+    <div class="col-sm-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="subheader">Операции</div>
+                <div class="h1 mb-0">
+                    {{ transactions_count }}
+                </div>
+                <div class="text-secondary small mt-2">
+                    Всего записей
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="subheader">Категории</div>
+                <div class="h1 mb-0">
+                    {{ categories_count }}
+                </div>
+                <div class="text-secondary small mt-2">
+                    Созданные категории
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="subheader">Бюджеты</div>
+                <div class="h1 mb-0">
+                    {{ budgets_count }}
+                </div>
+                <div class="text-secondary small mt-2">
+                    Созданные лимиты
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-xl-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="subheader">Баланс операций</div>
+                <div class="h2 mb-0 {% if income_total >= expense_total %}text-success{% else %}text-danger{% endif %}">
+                    {{ income_total|floatformat:2 }} ₽
+                </div>
+                <div class="text-secondary small mt-2">
+                    Доходы: {{ income_total|floatformat:2 }} ₽
+                </div>
+                <div class="text-secondary small">
+                    Расходы: {{ expense_total|floatformat:2 }} ₽
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Быстрые переходы -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h3 class="card-title">Быстрые действия</h3>
+    </div>
+
+    <div class="card-body">
+        <div class="d-flex flex-wrap gap-2">
+
+            <a href="/transactions/" class="btn btn-primary">
+                Мои операции
+            </a>
+
+            <a href="/categories/" class="btn btn-outline-primary">
+                Мои категории
+            </a>
+
+            <a href="/budgets/" class="btn btn-outline-primary">
+                Мои бюджеты
+            </a>
+
+            <a href="/" class="btn btn-outline-secondary">
+                На главную
+            </a>
+
+        </div>
+    </div>
+</div>
+
+<!-- Управление аккаунтом -->
+<div class="card">
+    <div class="card-header">
+        <h3 class="card-title">Управление аккаунтом</h3>
+    </div>
+
+    <div class="card-body">
+        <p class="text-secondary">
+            Выход завершит текущий сеанс работы с приложением.
+        </p>
+
+        <form method="post" action="{% url 'logout' %}">
+            {% csrf_token %}
+
+            <button type="submit" class="btn btn-outline-danger">
+                Выйти из аккаунта
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

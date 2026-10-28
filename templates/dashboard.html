@@ -1,0 +1,336 @@
+
+{% extends 'base.html' %}
+
+{% block title %}Главная | FinTrack{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none">
+    <div class="row align-items-center">
+        <div class="col">
+            <h2 class="page-title">Главная</h2>
+            <div class="text-secondary mt-1">
+                Обзор твоих финансов
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Финансовые карточки -->
+<div class="row row-cards">
+
+    <div class="col-sm-6 col-lg-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="subheader">Текущий баланс</div>
+                <div class="h1 mb-0">
+                    {{ balance|floatformat:2 }} ₽
+                </div>
+                <div class="text-secondary mt-2">
+                    Общий баланс доходов и расходов
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-lg-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="subheader">Доходы за месяц</div>
+                <div class="h1 mb-0 text-success">
+                    +{{ month_income|floatformat:2 }} ₽
+                </div>
+                <div class="text-secondary mt-2">
+                    Доходы текущего месяца
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-sm-6 col-lg-4">
+        <div class="card">
+            <div class="card-body">
+                <div class="subheader">Расходы за месяц</div>
+                <div class="h1 mb-0 text-danger">
+                    -{{ month_expenses|floatformat:2 }} ₽
+                </div>
+                <div class="text-secondary mt-2">
+                    Расходы текущего месяца
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Графики -->
+<div class="row row-cards mt-3">
+
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Доходы и расходы по месяцам</h3>
+            </div>
+            <div class="card-body">
+                <div style="height: 300px;">
+                    <canvas id="income-expense-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Расходы по категориям</h3>
+            </div>
+            <div class="card-body">
+                {% if category_labels %}
+                    <div style="height: 300px;">
+                        <canvas id="category-chart"></canvas>
+                    </div>
+                {% else %}
+                    <div class="text-secondary text-center py-5">
+                        Пока нет расходов для отображения
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Доходы и расходы за текущий месяц</h3>
+            </div>
+            <div class="card-body">
+                <div style="height: 300px;">
+                    <canvas id="month-chart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Последние операции -->
+<div class="row row-cards mt-3">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Последние операции</h3>
+                <div class="card-actions">
+                    <a href="{% url 'transactions' %}" class="btn btn-primary btn-sm">
+                        Все операции
+                    </a>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-vcenter card-table">
+                    <thead>
+                        <tr>
+                            <th>Название</th>
+                            <th>Категория</th>
+                            <th>Дата</th>
+                            <th>Тип</th>
+                            <th class="text-end">Сумма</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for transaction in latest_transactions %}
+                            <tr>
+                                <td>{{ transaction.title }}</td>
+                                <td>{{ transaction.category.name }}</td>
+                                <td>{{ transaction.date|date:"d.m.Y" }}</td>
+                                <td>
+                                    {% if transaction.transaction_type == 'income' %}
+                                        <span class="badge bg-success-lt">Доход</span>
+                                    {% else %}
+                                        <span class="badge bg-danger-lt">Расход</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if transaction.transaction_type == 'income' %}
+                                        <span class="text-success">
+                                            +{{ transaction.amount|floatformat:2 }} ₽
+                                        </span>
+                                    {% else %}
+                                        <span class="text-danger">
+                                            -{{ transaction.amount|floatformat:2 }} ₽
+                                        </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center text-secondary py-4">
+                                    Операций пока нет. Добавь первую на странице «Операции».
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+{{ months_labels|json_script:"months-labels" }}
+{{ income_values|json_script:"income-values" }}
+{{ expense_values|json_script:"expense-values" }}
+{{ category_labels|json_script:"category-labels" }}
+{{ category_values|json_script:"category-values" }}
+{{ month_income|json_script:"month-income" }}
+{{ month_expenses|json_script:"month-expenses" }}
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const months = JSON.parse(
+        document.getElementById('months-labels').textContent
+    );
+    const incomes = JSON.parse(
+        document.getElementById('income-values').textContent
+    );
+    const expenses = JSON.parse(
+        document.getElementById('expense-values').textContent
+    );
+    const categoryLabels = JSON.parse(
+        document.getElementById('category-labels').textContent
+    );
+    const categoryValues = JSON.parse(
+        document.getElementById('category-values').textContent
+    );
+    const monthIncome = Number(JSON.parse(
+        document.getElementById('month-income').textContent
+    ));
+    const monthExpenses = Number(JSON.parse(
+        document.getElementById('month-expenses').textContent
+    ));
+
+    // График доходов и расходов по месяцам
+    const incomeExpenseCanvas = document.getElementById('income-expense-chart');
+
+    if (incomeExpenseCanvas) {
+        new Chart(incomeExpenseCanvas, {
+            type: 'line',
+            data: {
+                labels: months,
+                datasets: [
+                    {
+                        label: 'Доходы',
+                        data: incomes,
+                        borderColor: '#2fb344',
+                        backgroundColor: 'rgba(47, 179, 68, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    },
+                    {
+                        label: 'Расходы',
+                        data: expenses,
+                        borderColor: '#d63939',
+                        backgroundColor: 'rgba(214, 57, 57, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+
+    // Круговая диаграмма расходов по категориям
+    const categoryCanvas = document.getElementById('category-chart');
+
+    if (categoryCanvas && categoryLabels.length > 0) {
+        new Chart(categoryCanvas, {
+            type: 'doughnut',
+            data: {
+                labels: categoryLabels,
+                datasets: [{
+                    data: categoryValues,
+                    backgroundColor: [
+                        '#206bc4',
+                        '#2fb344',
+                        '#d63939',
+                        '#f59f00',
+                        '#ae3ec9',
+                        '#17a2b8',
+                        '#fd7e14',
+                        '#6c757d'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+
+    // Сравнение доходов и расходов за текущий месяц
+    const monthCanvas = document.getElementById('month-chart');
+
+    if (monthCanvas) {
+        new Chart(monthCanvas, {
+            type: 'bar',
+            data: {
+                labels: ['Текущий месяц'],
+                datasets: [
+                    {
+                        label: 'Доходы',
+                        data: [monthIncome],
+                        backgroundColor: '#2fb344'
+                    },
+                    {
+                        label: 'Расходы',
+                        data: [monthExpenses],
+                        backgroundColor: '#d63939'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

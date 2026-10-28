@@ -1,0 +1,310 @@
+```html
+{% extends 'base.html' %}
+
+{% block title %}Бюджеты | FinTrack{% endblock %}
+
+{% block content %}
+<div class="page-header mb-4">
+    <h2>Бюджеты</h2>
+    <p class="text-secondary">Планирование и контроль расходов</p>
+</div>
+
+<!-- Форма создания бюджета -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h3 class="card-title">Установить лимит</h3>
+    </div>
+
+    <div class="card-body">
+        <form id="budget-form">
+            {% csrf_token %}
+
+            <div class="mb-3">
+                <label class="form-label" for="budget-category">
+                    Категория
+                </label>
+
+                <select class="form-select"
+                        name="category"
+                        id="budget-category"
+                        required>
+                    {% for category in categories %}
+                    <option value="{{ category.id }}">
+                        {{ category.name }}
+                    </option>
+                    {% empty %}
+                    <option value="" disabled selected>
+                        Нет доступных категорий расходов
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="budget-amount">
+                    Месячный лимит, ₽
+                </label>
+
+                <input class="form-control"
+                       type="number"
+                       name="limit_amount"
+                       id="budget-amount"
+                       min="0.01"
+                       step="0.01"
+                       required>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label" for="budget-month">
+                    Месяц
+                </label>
+
+                <input class="form-control"
+                       type="month"
+                       name="month"
+                       id="budget-month"
+                       value="{{ month|date:'Y-m' }}"
+                       required>
+            </div>
+
+            <button class="btn btn-primary"
+                    type="submit"
+                    {% if not categories %}disabled{% endif %}>
+                Сохранить бюджет
+            </button>
+        </form>
+
+        <div id="budget-message" class="mt-3"></div>
+    </div>
+</div>
+
+<!-- Список бюджетов -->
+<div class="row row-cards" id="budgets-list">
+
+    {% for item in budgets %}
+    <div class="col-md-6 col-xl-4 mb-3"
+         id="budget-{{ item.budget.id }}">
+
+        <div class="card h-100">
+            <div class="card-body">
+
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h3 class="card-title mb-0">
+                        {{ item.budget.category.name }}
+                    </h3>
+
+                    {% if item.percent >= 100 %}
+                    <span class="badge bg-danger text-white">
+                        {% if item.percent > 100 %}
+                        Превышен
+                        {% else %}
+                        Исчерпан
+                        {% endif %}
+                    </span>
+                    {% else %}
+                    <span class="badge bg-primary text-white">
+                        В пределах лимита
+                    </span>
+                    {% endif %}
+                </div>
+
+                <div class="text-secondary small mb-3">
+                    {{ item.budget.month|date:'m.Y' }}
+                </div>
+
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-secondary">Потрачено</span>
+                    <strong>{{ item.spent|floatformat:2 }} ₽</strong>
+                </div>
+
+                <div class="progress mb-2"
+                     role="progressbar"
+                     aria-label="Использование бюджета"
+                     aria-valuenow="{{ item.progress_percent }}"
+                     aria-valuemin="0"
+                     aria-valuemax="100">
+
+                    <div class="progress-bar
+                        {% if item.percent >= 100 %}
+                            bg-danger
+                        {% else %}
+                            bg-primary
+                        {% endif %}"
+                         style="width: {{ item.progress_percent }}%;">
+                    </div>
+                </div>
+
+                <div class="text-secondary small mb-3">
+                    Использовано: {{ item.percent }}%
+                </div>
+
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-secondary">Месячный лимит</span>
+                    <strong>
+                        {{ item.budget.limit_amount|floatformat:2 }} ₽
+                    </strong>
+                </div>
+
+                <div class="d-flex justify-content-between">
+                    <span class="text-secondary">Остаток</span>
+
+                    <strong class="{% if item.remaining < 0 %}text-danger{% else %}text-success{% endif %}">
+                        {{ item.remaining|floatformat:2 }} ₽
+                    </strong>
+                </div>
+
+                {% if item.remaining < 0 %}
+                <div class="alert alert-danger mt-3 mb-0">
+                    Превышение лимита:
+                    {{ item.remaining|stringformat:".2f"|cut:"-" }} ₽
+                </div>
+                {% endif %}
+
+                <button type="button"
+                        class="btn btn-outline-danger btn-sm mt-3 delete-budget"
+                        data-id="{{ item.budget.id }}">
+                    Удалить бюджет
+                </button>
+
+            </div>
+        </div>
+    </div>
+
+    {% empty %}
+    <div class="col-12" id="empty-budgets">
+        <div class="card">
+            <div class="card-body text-center text-secondary py-5">
+                <div class="mb-3">
+                    <i class="ti ti-wallet" style="font-size: 2rem;"></i>
+                </div>
+
+                <h3>Бюджеты ещё не созданы</h3>
+                <p class="mb-0">
+                    Выбери категорию расходов и установи месячный лимит.
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+</div>
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+const budgetForm = document.getElementById('budget-form');
+const budgetMessage = document.getElementById('budget-message');
+
+function getCsrfToken() {
+    return document.querySelector(
+        '[name=csrfmiddlewaretoken]'
+    ).value;
+}
+
+
+// Создание бюджета
+budgetForm.addEventListener('submit', async function(event) {
+    event.preventDefault();
+
+    budgetMessage.textContent = '';
+
+    try {
+        const response = await fetch("{% url 'budget_create' %}", {
+            method: 'POST',
+            body: new FormData(budgetForm),
+            headers: {
+                'X-CSRFToken': getCsrfToken()
+            }
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            budgetMessage.textContent =
+                data.error || 'Не удалось сохранить бюджет.';
+
+            budgetMessage.className = 'alert alert-danger mt-3';
+            return;
+        }
+
+        budgetMessage.textContent =
+            data.message || 'Бюджет успешно сохранён.';
+
+        budgetMessage.className = 'alert alert-success mt-3';
+
+        window.location.reload();
+
+    } catch (error) {
+        budgetMessage.textContent =
+            'Не удалось связаться с сервером.';
+
+        budgetMessage.className = 'alert alert-danger mt-3';
+    }
+});
+
+
+// Удаление бюджета
+document.querySelectorAll('.delete-budget').forEach(button => {
+    button.addEventListener('click', async function() {
+        if (!confirm('Удалить этот бюджет?')) {
+            return;
+        }
+
+        button.disabled = true;
+
+        try {
+            const response = await fetch(
+                `/budgets/${button.dataset.id}/delete/`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCsrfToken()
+                    }
+                }
+            );
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                alert(
+                    data.error || 'Не удалось удалить бюджет.'
+                );
+
+                button.disabled = false;
+                return;
+            }
+
+            const budgetCard = document.getElementById(
+                `budget-${button.dataset.id}`
+            );
+
+            if (budgetCard) {
+                budgetCard.remove();
+            }
+
+            const budgetsList = document.getElementById('budgets-list');
+
+            if (!budgetsList.querySelector('[id^="budget-"]')) {
+                budgetsList.innerHTML = `
+                    <div class="col-12" id="empty-budgets">
+                        <div class="card">
+                            <div class="card-body text-center text-secondary py-5">
+                                <h3>Бюджеты ещё не созданы</h3>
+                                <p class="mb-0">
+                                    Создай бюджет, чтобы контролировать расходы.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+
+        } catch (error) {
+            alert('Не удалось связаться с сервером.');
+            button.disabled = false;
+        }
+    });
+});
+</script>
+{% endblock %}

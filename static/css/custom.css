@@ -1,0 +1,38 @@
+
+body {
+    background-color: #f5f7fb;
+}
+
+.navbar-brand {
+    font-size: 22px;
+    font-weight: 700;
+}
+
+.card {
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    transition: box-shadow 0.2s ease;
+}
+
+.card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.07);
+}
+
+.page-title {
+    font-weight: 700;
+}
+
+@media (max-width: 576px) {
+    .container-xl {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .h1 {
+        font-size: 1.5rem;
+    }
+
+    .navbar-brand {
+        font-size: 19px;
+    }
+}
